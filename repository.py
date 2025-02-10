@@ -81,3 +81,42 @@ def update_user_sessions(users_data):
     finally:
         conn.close()
 
+
+
+def get_last_break_suggestions(user_id, limit=5):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+    SELECT suggestion FROM break_suggestions 
+    WHERE user_id = ? 
+    ORDER BY timestamp DESC 
+    LIMIT ?
+    """, (user_id, limit))
+    
+    suggestions = [row[0] for row in cursor.fetchall()]  # Extracting suggestions from tuples
+    
+    conn.close()
+
+    if not suggestions:
+        suggestions = [
+        "Stretch for 5 minutes",
+        "Drink a glass of water",
+        "Take a short walk",
+        "Do deep breathing exercises",
+        "Look away from the screen for a minute"
+       ]
+    
+    return suggestions[::-1]  # Return in chronological order (oldest to newest)
+
+
+def save_break_suggestion(user_id, suggestion):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO break_suggestions (user_id, suggestion, timestamp)
+        VALUES (?, ?, ?)
+    """, (user_id, suggestion, datetime.now()))
+    conn.commit()
+    conn.close()
+

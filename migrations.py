@@ -31,6 +31,17 @@ migrations = [
             is_active BOOLEAN
         )
         """
+    },
+       {
+        "name": "create_break_suggestions_table",
+        "query": """
+        CREATE TABLE IF NOT EXISTS break_suggestions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            suggestion TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """
     }
 ]
 
