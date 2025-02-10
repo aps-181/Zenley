@@ -72,30 +72,10 @@ def send_app_home_tab(user_id):
             user_id=user_id,
             view=home_tab_view
         )
-        print("App home view result >>> ", result)
+        print("Send app home tab view")
 
     except Exception as e:
         print("Error while sending app_home_view", format(e))
-
-
-def get_message_history_details(user_id):
-    for user_message_detail in user_message_details:
-        if user_message_detail["user_id"] == user_id:
-            return user_message_detail
-        
-    return None
-
-def get_current_meeting(meeting_list):
-    if meeting_list:   
-        current_time = datetime.now()
-        for meeting in meeting_list:
-            start_time = meeting["start"].get("dateTime")
-            end_time = meeting["end"].get("dateTime")
-            if start_time < current_time and end_time >= current_time:
-                return meeting
-    
-    return None
-
 
 def schedule_notification():
     print("Entered notification scheduler ")
@@ -126,11 +106,6 @@ def schedule_notification():
                 user["session_start_time"] = datetime.now()
                 users_sessions_to_update.append(user)
                 print("Updated session time to ",user["session_start_time"], "for user ", user_id)
-                # user_message_detail = {
-                #     "user_id" : user_id,
-                #     "last_send_time" : datetime.now()
-                # }
-                # user_message_details.append(user_message_detail)
         
     update_user_sessions(users_sessions_to_update)
 
@@ -160,7 +135,6 @@ message_scheduler.add_job(func=schedule_notification, trigger="interval", second
 message_scheduler.start()
 
 def is_bot_user(user):
-    # if not members[i]["is_bot"] and not members[i]["real_name"] == "Slackbot" and not members[i]["id"] == "U08C98PGANS":
     return user["is_bot"] or user["real_name"] == "Slackbot"
 
 def get_workspace_members():
