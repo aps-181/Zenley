@@ -16,5 +16,6 @@ COPY . /app
 # Expose the port if needed (example port 5000 for a web app)
 EXPOSE 5000
 
-# Set the default command to run your Python application (if you have one)
-CMD ["python", "bot.py"]
+# To run the migrations first and then spin up the server
+CMD ["sh", "-c", "python migrations.py && python bot.py"]
+

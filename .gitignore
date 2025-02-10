@@ -1,0 +1,28 @@
+# 🚀 Ignore environment & secrets
+.env
+client_secret.json
+
+# 🚀 Ignore database files & migrations
+db/
+*.sqlite3
+
+# 🚀 Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 🚀 Ignore logs & temp files
+*.log
+logs/
+tmp/
+*.swp  # Vim swap files
+
+# 🚀 Ignore JetBrains (PyCharm, IntelliJ) IDE settings
+.idea/
+
+# 🚀 Ignore VS Code settings (optional)
+.vscode/
+
+# 🚀 Ignore Docker-related temporary files
+*.pid

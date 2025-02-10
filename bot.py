@@ -7,7 +7,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 from datetime import datetime, timedelta
 from views import get_app_home_tab_view
-from google_calendar import google_calendar_details, calendar_api_request
+from google_calendar import google_calendar_details, get_calendar_events
+from break_activity_assistant import get_break_suggestion
+from repository import initalize_user_session, fetch_all_user_sessions, update_user_sessions
 
 env_path = Path('.') / '.env'
 load_dotenv(dotenv_path=env_path)
@@ -19,22 +21,7 @@ app.register_blueprint(google_calendar_details)
 
 app.secret_key = 'REPLACE ME - this value is here as a placeholder.'
 
-dbData = [
-    {
-        "userId": "U08AYDQ6YAU",
-        "messageScheduledTime": datetime.now(),
-        "intervalInSeconds": 20,
-        "credentials": None
-    }
-]
-
-messages = [
-    "Getting up from chair",
-    "Have some water",
-    "Take a walk"
-]
-
-index = 0
+user_message_details = []
 
 
 @app.route("/")
@@ -54,7 +41,7 @@ def connect_to_google_calendar():
 
 
 @app.route("/processEvents", methods=["POST"])
-def processEvents():
+def process_events():
     try:
         slack_event = request.json
         if "challenge" in slack_event:
@@ -64,6 +51,13 @@ def processEvents():
             user_id = slack_event['event']['user']
             # Call the function to send the Home tab
             send_app_home_tab(user_id)
+
+        if slack_event.get('event', {}).get('type') == 'user_status_changed':
+            user_id = slack_event['event']['user']
+            # Call the function to send the Home tab
+            # send_app_home_tab(user_id)
+            print("Slack event: ", slack_event,
+                  "\n user Id: ", user_id, end="\n")
 
         return '', 200
 
@@ -84,53 +78,138 @@ def send_app_home_tab(user_id):
         print("Error while sending app_home_view", format(e))
 
 
-def scheduleNotification():
-    print("Endered notification scheduler ")
-    for entry in dbData:
-        # try:
-        #     calendar_api_request()
-        # except Exception as e:
-        #     print("Got an error", format(e))
-        currentTime = datetime.now()
-        messageScheduledTime = entry["messageScheduledTime"]
-        intervalInSeconds = entry["intervalInSeconds"]
-        userId = entry["userId"]
-        if messageScheduledTime < currentTime:
-            print("Updating messageScheduledTime")
-            messageScheduledTime = currentTime + timedelta(seconds=intervalInSeconds)
-            scheduleMessage(userId, messageScheduledTime)
-            entry["messageScheduledTime"] = messageScheduledTime
-            print("New messageScheduledTime time", messageScheduledTime)
+def get_message_history_details(user_id):
+    for user_message_detail in user_message_details:
+        if user_message_detail["user_id"] == user_id:
+            return user_message_detail
+        
+    return None
+
+def get_current_meeting(meeting_list):
+    if meeting_list:   
+        current_time = datetime.now()
+        for meeting in meeting_list:
+            start_time = meeting["start"].get("dateTime")
+            end_time = meeting["end"].get("dateTime")
+            if start_time < current_time and end_time >= current_time:
+                return meeting
+    
+    return None
 
 
-def scheduleMessage(id, scheduled_timestamp):
+def schedule_notification():
+    print("Entered notification scheduler ")
+
+    user_sessions = fetch_all_user_sessions()
+    users_sessions_to_update = []
+
+    if not user_sessions:
+        print("No users found in db when trying to post messages, hence returning")
+        return
+    
+    for user in user_sessions:
+        user_id = user['user_id']
+
+        if not user["is_active"]:
+            continue
+
+        current_time = datetime.now()
+        user_current_session_duration = current_time - user["session_start_time"]
+        print("User session time: ",(user_current_session_duration/60))
+        user_session_duration_in_minutes = int(user_current_session_duration.total_seconds()/60)
+        
+        if user_current_session_duration > timedelta(minutes=1):
+            
+            message = f"Hey <@{user_id}> you seem to be working continously for the past {user_session_duration_in_minutes} minutes. " + get_break_suggestion(user_id, 45)
+            is_success = post_messgae(user_id,message)
+            if(is_success):
+                user["session_start_time"] = datetime.now()
+                users_sessions_to_update.append(user)
+                print("Updated session time to ",user["session_start_time"], "for user ", user_id)
+                # user_message_detail = {
+                #     "user_id" : user_id,
+                #     "last_send_time" : datetime.now()
+                # }
+                # user_message_details.append(user_message_detail)
+        
+    update_user_sessions(users_sessions_to_update)
+
+            
+
+
+
+def post_messgae(user_id,message):
+    if user_id == "U08C98PGANS": 
+        print("Skipping message posting")
+        return
     try:
-        # Call the chat.scheduleMessage method using the WebClient
-        global index
-        messageToSend = messages[index]
-        index = index+1
-        if index == 3:
-            index = 0
-
-        result = client.chat_scheduleMessage(
-            channel=id,
-            text=messageToSend,
-            post_at=scheduled_timestamp.strftime('%s')
+        # Call the chat.postMessage method using the WebClient
+        result = client.chat_postMessage(
+            channel=user_id, 
+            text=message
         )
-        # Log the result
-        print("Message Scheduled")
+        print(f"Posted message: {message} to user {user_id}")
+        return result["ok"]
+    except Exception as e:
+        print(f"Failed to post message for user id, {user_id} due to error: {e}")
+        return False
 
-    except slack.SlackApiError as e:
-        print("Error scheduling message: {}".format(e))
+
+message_scheduler = BackgroundScheduler()
+message_scheduler.add_job(func=schedule_notification, trigger="interval", seconds=120)
+message_scheduler.start()
+
+def is_bot_user(user):
+    # if not members[i]["is_bot"] and not members[i]["real_name"] == "Slackbot" and not members[i]["id"] == "U08C98PGANS":
+    return user["is_bot"] or user["real_name"] == "Slackbot"
+
+def get_workspace_members():
+    try:
+        result = client.users_list()
+        if result["ok"]:
+           members = result["members"] 
+           app_users = [member for member in members if not is_bot_user(member)]
+           initalize_user_session(app_users)
+          
+    except Exception as e:
+        print("An exception occured while getting workspace users: ", format(e))
 
 
-scheduler = BackgroundScheduler()
-scheduler.add_job(func=scheduleNotification, trigger="interval", seconds=10)
-scheduler.start()
+def poll_member_presence():
+    user_sessions = fetch_all_user_sessions()
+    if not user_sessions:
+        get_workspace_members()
 
-# Shut down the scheduler when exiting the app
-atexit.register(lambda: scheduler.shutdown())
+    users_sessions_to_update = []
+    for user in user_sessions:
+        user_id = user["user_id"]
+        try:
+            result = client.users_getPresence(user=user_id)
+            if result["ok"]:
+                if result["presence"] == "active" and not user["is_active"]:
+                    user["session_start_time"] = datetime.now()
+                    user["is_active"] = True
+                    users_sessions_to_update.append(user)
+                elif result["presence"] != "active" and user["is_active"]:
+                    user["session_end_time"] = datetime.now()
+                    user["is_active"] = False
+                    users_sessions_to_update.append(user)
 
+            print(f"User {user_id} is: ", result)
+        except Exception as e:
+            print("Error occured while polling user status: ",user_id,"Error: ",format(e),end="\n")
+    update_user_sessions(users_sessions_to_update)
+    for user in user_sessions:
+        print("Current user status: ", user, end = "\n")
+
+
+user_presence_check_scheduler = BackgroundScheduler()
+user_presence_check_scheduler.add_job(func=poll_member_presence, trigger="interval", seconds=60)
+user_presence_check_scheduler.start()
+
+# Shut down the schedulers when exiting the app
+atexit.register(lambda: user_presence_check_scheduler.shutdown())
+atexit.register(lambda: message_scheduler.shutdown())
 
 if __name__ == "__main__":
     # When running locally, disable OAuthlib's HTTPs verification.

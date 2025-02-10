@@ -1,0 +1,8 @@
+fileignoreconfig:
+- filename: bot.py
+  checksum: 13405d35c98a47e1558d47ea3fb5aaec688c52c9b54e4b73fa76c3182bfb4b95
+- filename: google_calendar.py
+  checksum: 8152600bb77ce6e321a78b47b4d45a0238a6dba6df68a43f26d391842495c20d
+- filename: break_activity_assistant.py
+  checksum: 6b13ebb6f1e1936eecc2dddd506102ac918f2cc77414c6b956ad126e26f94d9b
+version: ""
