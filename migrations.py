@@ -32,17 +32,19 @@ migrations = [
         )
         """
     },
-       {
-        "name": "create_break_suggestions_table",
-        "query": """
-        CREATE TABLE IF NOT EXISTS break_suggestions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            suggestion TEXT NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    }
+     {
+    "name": "create_break_suggestions_table",
+    "query": """
+    CREATE TABLE IF NOT EXISTS break_suggestions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        prompt TEXT NOT NULL,
+        suggestion TEXT NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """
+}
+
 ]
 
 # Apply migrations if not already applied

@@ -14,30 +14,23 @@ client = openai.OpenAI(api_key=os.environ['OPEN_AI_KEY'])
 def get_break_suggestion(user_id, session_duration):
     """Fetches a break suggestion while considering past suggestions."""
 
-    last_suggestions = get_last_break_suggestions(user_id,5)
+    past_breaks = get_last_break_suggestions(user_id,3)
     
-    prompt = f"""
-    I have been working for {session_duration} minutes since my last break.
-    In my past five breaks, I have done: {', '.join(last_suggestions)}.
+ # Construct OpenAI messages with system, user, and assistant roles
+    messages = [
+        {"role": "system", "content":
+         """ You are an ai chatbot that generates slack notifications for employees working from home or in an office to take short breaks and break activities, like a quick stretch or small exercies they could do for them to stay healthy and boost productivity.Ensure the message content varies from the last messages send. Don't suggest dance parties""" 
+        }   
+    ]
 
-    Suggest an energizing and motivating break activity that also keeps me healthy 
-    by preventing backaches, migraines, or dehydration. 
-    Ensure variety, usefulness and doable in an office setting.
-    """
+    # Include past break prompts and responses as message history
+    for break_entry in reversed(past_breaks):  # Oldest first
+        messages.append({"role": "user", "content": break_entry["prompt"]})
+        messages.append({"role": "assistant", "content": break_entry["suggestion"]})
 
-
-    # Construct conversation history
-    messages = [{"role": "system", "content": "You are a health and productivity assistant. Suggest short, energizing activities like drinking water or stretching or a quick walk or looking away from the screen etc and avoid repetition."}]
-    
-    # # Add past interactions (limit to last 5 to keep it short)
-    # for past in history[-5:]:  
-    #     messages.append({"role": "user", "content": past["user"]})
-    #     messages.append({"role": "assistant", "content": past["assistant"]})
-
-    # Generate a dynamic prompt
-    # prompt = f"I have been working for {session_duration} minutes. Suggest an action which I could do to get energized."
+    # Add the latest request with dynamic session duration
+    prompt = f"My last break was {session_duration} minutes ago and have been working since. What is a good break idea to get energized and stay healthy?"
     messages.append({"role": "user", "content": prompt})
-
     # Call OpenAI API
     response = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -49,7 +42,7 @@ def get_break_suggestion(user_id, session_duration):
     suggestion = response.choices[0].message.content
     print(f"User {user_id}: {suggestion}")
 
-    save_break_suggestion(user_id,suggestion)
+    save_break_suggestion(user_id,prompt,suggestion)
 
     return suggestion
 

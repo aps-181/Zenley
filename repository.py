@@ -88,35 +88,41 @@ def get_last_break_suggestions(user_id, limit=5):
     cursor = conn.cursor()
     
     cursor.execute("""
-    SELECT suggestion FROM break_suggestions 
+    SELECT prompt, suggestion
+    FROM break_suggestions 
     WHERE user_id = ? 
     ORDER BY timestamp DESC 
     LIMIT ?
     """, (user_id, limit))
     
-    suggestions = [row[0] for row in cursor.fetchall()]  # Extracting suggestions from tuples
+    results = cursor.fetchall()
     
     conn.close()
 
-    if not suggestions:
-        suggestions = [
-        "Stretch for 5 minutes",
-        "Drink a glass of water",
-        "Take a short walk",
-        "Do deep breathing exercises",
-        "Look away from the screen for a minute"
-       ]
+    if not results:
+        results = [
+       ( "You've been working for a while, what can you do to recharge?", "Try standing up and stretching for a few minutes to refresh your body."),
+      ( "Feeling a bit drained? What’s a quick way to reset?", "Take a deep breath, step away from your screen, and drink a glass of water.")
+    ]
     
-    return suggestions[::-1]  # Return in chronological order (oldest to newest)
+        # Convert to list of dictionaries
+     
+    return [{"prompt": row[0], "suggestion": row[1]} for row in results]
+
+    
 
 
-def save_break_suggestion(user_id, suggestion):
+def save_break_suggestion(user_id, prompt, suggestion):
+    """Save the break suggestion along with the prompt in the database."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+
     cursor.execute("""
-        INSERT INTO break_suggestions (user_id, suggestion, timestamp)
-        VALUES (?, ?, ?)
-    """, (user_id, suggestion, datetime.now()))
+        INSERT INTO break_suggestions (user_id, prompt, suggestion, timestamp)
+        VALUES (?, ?, ?, ?)
+    """, (user_id, prompt, suggestion, datetime.now()))
+
     conn.commit()
     conn.close()
+
 

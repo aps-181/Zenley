@@ -195,4 +195,4 @@ if __name__ == "__main__":
     # If users only grant partial request, the warning would not be thrown.
     os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
 
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True,use_reloader=False)
