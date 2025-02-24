@@ -101,8 +101,9 @@ def get_last_break_suggestions(user_id, limit=5):
 
     if not results:
         results = [
-       ( "You've been working for a while, what can you do to recharge?", "Try standing up and stretching for a few minutes to refresh your body."),
-      ( "Feeling a bit drained? What’s a quick way to reset?", "Take a deep breath, step away from your screen, and drink a glass of water.")
+       ( "My last break was 20 minutes ago and have been working since. What is a good break idea to get energized and stay healthy?", "Take a deep breath, step away from your screen, and drink a glass of water."),
+      ( "My last break was 45 minutes ago and have been working since. What is a good break idea to get energized and stay healthy?", "Try standing up and stretching for a few minutes to refresh your body."),
+      ( "My last break was 60 minutes ago and have been working since. What is a good break idea to get energized and stay healthy?", "Awesome effort! How about a mini workout sesh? Just 5-10 minutes of light exercises like jumping jacks, squats, or even a quick walk around your space will get the blood pumping and energy flowing! You got this!")
     ]
     
         # Convert to list of dictionaries

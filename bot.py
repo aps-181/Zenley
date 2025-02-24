@@ -21,7 +21,7 @@ app.register_blueprint(google_calendar_details)
 
 app.secret_key = 'REPLACE ME - this value is here as a placeholder.'
 
-user_message_details = []
+TIME_DELTA_IN_MINUTES=1
 
 
 @app.route("/")
@@ -77,6 +77,17 @@ def send_app_home_tab(user_id):
     except Exception as e:
         print("Error while sending app_home_view", format(e))
 
+def get_session_duration_for_message(user_session_duration_in_minutes):
+    if user_session_duration_in_minutes > 60:
+        hours = user_session_duration_in_minutes//60
+        minutes = user_session_duration_in_minutes-(60*hours)
+        if minutes <= 0:
+            return f"{hours} hour"
+        else:
+            return f"{hours} hour and {minutes} minutes"
+        
+    return f"{user_session_duration_in_minutes} minutes"
+
 def schedule_notification():
     print("Entered notification scheduler ")
 
@@ -98,9 +109,10 @@ def schedule_notification():
         print("User session time: ",(user_current_session_duration/60))
         user_session_duration_in_minutes = int(user_current_session_duration.total_seconds()/60)
         
-        if user_current_session_duration > timedelta(minutes=1):
+        if user_current_session_duration > timedelta(minutes=TIME_DELTA_IN_MINUTES):
             
-            message = f"Hey <@{user_id}> you seem to be working continously for the past {user_session_duration_in_minutes} minutes. " + get_break_suggestion(user_id, 45)
+            message = f"Hey <@{user_id}> you seem to be working continously for the past {get_session_duration_for_message(user_session_duration_in_minutes)}. " + get_break_suggestion(user_id, user_session_duration_in_minutes)
+            # message = get_break_suggestion(user_id,user_session_duration_in_minutes)
             is_success = post_messgae(user_id,message)
             if(is_success):
                 user["session_start_time"] = datetime.now()
@@ -114,9 +126,6 @@ def schedule_notification():
 
 
 def post_messgae(user_id,message):
-    if user_id == "U08C98PGANS": 
-        print("Skipping message posting")
-        return
     try:
         # Call the chat.postMessage method using the WebClient
         result = client.chat_postMessage(
@@ -178,7 +187,7 @@ def poll_member_presence():
 
 
 user_presence_check_scheduler = BackgroundScheduler()
-user_presence_check_scheduler.add_job(func=poll_member_presence, trigger="interval", seconds=60)
+user_presence_check_scheduler.add_job(func=poll_member_presence, trigger="interval", seconds=30)
 user_presence_check_scheduler.start()
 
 # Shut down the schedulers when exiting the app
